@@ -451,12 +451,13 @@ class SkopeRules(BaseEstimator):
         selected_rules = self.rules_without_feature_names_
 
         scores = np.zeros(X.shape[0])
+
         for (r, w) in selected_rules:
             scores[list(df.query(r).index)] += w[0]
 
         return scores
 
-    def rules_vote(self, X):
+    def rules_vote(self, X, n_rules = None):
         """Score representing a vote of the base classifiers (rules).
 
         The score of an input sample is computed as the sum of the binary
@@ -489,7 +490,10 @@ class SkopeRules(BaseEstimator):
                              % (X.shape[1], self.n_features_))
 
         df = pandas.DataFrame(X, columns=self.feature_names_)
-        selected_rules = self.rules_
+     #   selected_rules = self.rules_
+
+        selected_rules = self.rules_without_feature_names_[:n_rules] \
+            if n_rules else self.rules_without_feature_names_
 
         scores = np.zeros(X.shape[0])
         for (r, _) in selected_rules:
@@ -595,11 +599,10 @@ class SkopeRules(BaseEstimator):
                 symbol = '<='
                 symbol2 = '>'
                 threshold = tree_.threshold[node]
-                text = base_name + ["{} {} {}".format(name, symbol, threshold)]
+                text = base_name + [f"{name} {symbol} {threshold}"]
                 recurse(tree_.children_left[node], text)
 
-                text = base_name + ["{} {} {}".format(name, symbol2,
-                                                      threshold)]
+                text = base_name + [f"{name} {symbol2} {threshold}"]
                 recurse(tree_.children_right[node], text)
             else:
                 rule = str.join(' and ', base_name)
@@ -690,5 +693,5 @@ class SkopeRules(BaseEstimator):
         return leaves
 
     def f1_score(self, x):
-        return 2 * x[1][0] * x[1][1] / \
-               (x[1][0] + x[1][1]) if (x[1][0] + x[1][1]) > 0 else 0
+        return (2 * x[1][0] * x[1][1] / den) \
+            if (den := (x[1][0] + x[1][1])) > 0 else 0
