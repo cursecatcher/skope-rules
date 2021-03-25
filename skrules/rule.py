@@ -41,19 +41,22 @@ class Rule:
         return hash(tuple(sorted(((i, j) for i, j in self.agg_dict.items()))))
 
     def factorize(self):
+        def format(num):
+            return f"{num:.3f}"
+
         for feature, symbol, value in self.terms:
             if (feature, symbol) not in self.agg_dict:
                 if symbol != '==':
-                    self.agg_dict[(feature, symbol)] = str(float(value))
+                    self.agg_dict[(feature, symbol)] = format(float(value))  
                 else:
                     self.agg_dict[(feature, symbol)] = value
             else:
                 if symbol[0] == '<':
-                    self.agg_dict[(feature, symbol)] = str(min(
+                    self.agg_dict[(feature, symbol)] = format(min(
                                 float(self.agg_dict[(feature, symbol)]),
                                 float(value)))
                 elif symbol[0] == '>':
-                    self.agg_dict[(feature, symbol)] = str(max(
+                    self.agg_dict[(feature, symbol)] = format(max(
                                 float(self.agg_dict[(feature, symbol)]),
                                 float(value)))
                 else:  # Handle the c0 == c0 case

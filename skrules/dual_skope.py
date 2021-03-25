@@ -1,4 +1,5 @@
 import numpy as np 
+import pandas as pd 
 from sklearn.base import BaseEstimator
 
 from .skope_rules import SkopeRules 
@@ -189,11 +190,18 @@ class DualSkoper(BaseEstimator):
             max_features=self.max_features, min_samples_split=self.min_samples_split, 
             n_jobs=self.n_jobs, random_state=self.random_state, verbose=self.verbose)
 
-        #fit two classifier, so that the first clf learns rules for the positive class
-        #and the second one learns rules for the negative class 
+        #fit two classifier, so that the first one learns rules for the positive class
+        #while the second one learns rules for the negative class 
         y_ = np.array(y, dtype=bool)
         self.__first = SkopeRules(**args).fit(X, y_, sample_weight=sample_weight)
         self.__second = SkopeRules(**args).fit(X, np.logical_not(y_), sample_weight=sample_weight)
+
+        self.rules_ = (
+            tuple(self.__first.rules_), 
+            tuple(self.__second.rules_))
+        self.rules_without_feature_names_ = (
+            tuple(self.__first.rules_without_feature_names_), 
+            tuple(self.__second.rules_without_feature_names_))
 
         return self 
 
@@ -218,14 +226,47 @@ class DualSkoper(BaseEstimator):
         ], dtype=int)
 
 
-    def score_top_rules(self, X):
-        raise NotImplementedError()
-        # score1, score2 = self.first.score_top_rules(X), self.second.score_top_rules(X)
+    def score_top_rules(self, X):        
+        return (
+            self.__first.score_top_rules(X), 
+            self.__second.score_top_rules(X)
+        )
 
-        # print(f"Score #1:\n{score1}\bScore #2:\n{score2}")
-        # return score1 
 
     def predict_top_rules(self, X, n_rules):
-        pass
+        """Predict if a particular sample is an outlier or not,
+        using the n_rules most performing rules.
 
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            The input samples. Internally, it will be converted to
+            ``dtype=np.float32``
 
+        n_rules : int
+            The number of rules used for the prediction. If one of the
+            n_rules most performing rules is activated, the prediction
+            is equal to 1.
+
+        Returns
+        -------
+        is_outlier : array, shape (n_samples,)
+            For each observations, tells whether or not (1 or 0) it should
+            be considered as an outlier according to the selected rules.
+        """
+
+        first = self.__first.rules_vote(X, n_rules)
+        second = self.__second.rules_vote(X, n_rules)
+        #XXX TODO improve voting  exploiting  precision or f1-score 
+        scores = (first - second) 
+
+        return np.array([x >= 0 for x in scores], dtype=int)
+    
+
+    def get_ith_rule(self, i):
+        """ """
+        def get_ith(l, i):
+            return l[i] if i < len(l) else None
+
+        rules_pos, rules_neg = self.rules_
+        return (get_ith(rules_pos, i), get_ith(rules_neg, i))
