@@ -32,6 +32,17 @@ class Rule:
         self.agg_dict = {}
         self.factorize()
         self.rule = str(self)
+    
+    # @property
+    # def clauses(self):
+    #     return tuple(sorted([feature for feature, _ in self.agg_dict.keys()]))
+
+    @property
+    def clauses(self):
+        return tuple(sorted(
+            [(feature, symbol) for feature, symbol in self.agg_dict.keys()], 
+            key=lambda pair: (pair[0], pair[1])
+        ))
 
     def __eq__(self, other):
         return self.agg_dict == other.agg_dict

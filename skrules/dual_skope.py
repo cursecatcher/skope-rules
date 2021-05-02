@@ -1,8 +1,11 @@
 import numpy as np 
 import pandas as pd 
 from sklearn.base import BaseEstimator
+from sklearn.metrics import cohen_kappa_score
 
+from .rule import Rule, replace_feature_name
 from .skope_rules import SkopeRules 
+
 
 class DualSkoper(BaseEstimator):
     """An easy-interpretable classifier optimizing simple logical rules.
@@ -190,7 +193,7 @@ class DualSkoper(BaseEstimator):
             max_features=self.max_features, min_samples_split=self.min_samples_split, 
             n_jobs=self.n_jobs, random_state=self.random_state, verbose=self.verbose)
 
-        #fit two classifier, so that the first one learns rules for the positive class
+        #fit two classifiers, so that the first one learns rules for the positive class
         #while the second one learns rules for the negative class 
         y_ = np.array(y, dtype=bool)
         self.__first = SkopeRules(**args).fit(X, y_, sample_weight=sample_weight)
@@ -255,14 +258,18 @@ class DualSkoper(BaseEstimator):
             be considered as an outlier according to the selected rules.
         """
 
+        #score samples by f1-score 
+        # first = self.__first.rules_vote_by_metric(X, n_rules)
+        # second = self.__second.rules_vote_by_metric(X, n_rules)
         first = self.__first.rules_vote(X, n_rules)
         second = self.__second.rules_vote(X, n_rules)
-        #XXX TODO improve voting  exploiting  precision or f1-score 
+        
+        
         scores = (first - second) 
 
         return np.array([x >= 0 for x in scores], dtype=int)
     
-
+ 
     def get_ith_rule(self, i):
         """ """
         def get_ith(l, i):
@@ -270,3 +277,15 @@ class DualSkoper(BaseEstimator):
 
         rules_pos, rules_neg = self.rules_
         return (get_ith(rules_pos, i), get_ith(rules_neg, i))
+
+
+    # def rule_coverage(self, X, y):
+    #     rules_pos, rules_neg = self.rules_
+
+    #     #dataframe without index 
+    #     df = pd.DataFrame(X.to_numpy(), columns = X.columns)
+
+    #     rules_ensemble = DualSkoper.rules_perf(df, y, rules_pos, "+")
+    #     rules_ensemble.update(DualSkoper.rules_perf(df, 1 - y, rules_neg, "-"))
+    #     return rules_ensemble
+

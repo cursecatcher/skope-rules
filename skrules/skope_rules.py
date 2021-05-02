@@ -247,16 +247,12 @@ class SkopeRules(BaseEstimator):
         self.estimators_ = []
         self.estimators_samples_ = []
         self.estimators_features_ = []
-
+        
         # default columns names :
-        feature_names_ = [BASE_FEATURE_NAME + x for x in
-                          np.arange(X.shape[1]).astype(str)]
-        if self.feature_names is not None:
-            self.feature_dict_ = {BASE_FEATURE_NAME + str(i): feat
-                                  for i, feat in enumerate(self.feature_names)}
-        else:
-            self.feature_dict_ = {BASE_FEATURE_NAME + str(i): feat
-                                  for i, feat in enumerate(feature_names_)}
+        feature_names_ = [f"{BASE_FEATURE_NAME}{x}" for x in np.arange(X.shape[1]).astype(str)]
+        feature_names_list = self.feature_names if self.feature_names is not None else feature_names_
+        self.feature_dict_ = {
+            f"{BASE_FEATURE_NAME}{i}": feat for i, feat in enumerate(feature_names_list)}
         self.feature_names_ = feature_names_
 
         clfs = []
@@ -270,7 +266,9 @@ class SkopeRules(BaseEstimator):
                 base_estimator=DecisionTreeClassifier(
                     max_depth=max_depth,
                     max_features=self.max_features,
-                    min_samples_split=self.min_samples_split),
+                    min_samples_split=self.min_samples_split, 
+                    # class_weight = "balanced"
+                    ),
                 n_estimators=self.n_estimators,
                 max_samples=self.max_samples_,
                 max_features=self.max_samples_features,
@@ -500,6 +498,49 @@ class SkopeRules(BaseEstimator):
             scores[list(df.query(r).index)] += 1
 
         return scores
+
+
+    def rules_vote_by_metric(self, X, n_rules = None, metric = "f1-score"):
+        def f1_score(precision, recall, _):
+            return 2 * precision * recall / (precision + recall)
+        def precision(precision, recall, _):
+            return precision
+        def recall(precision, recall, _):
+            return recall 
+
+        if metric == "f1-score":
+            metric = f1_score
+        elif metric == "precision":
+            metric = precision
+        elif metric == "recall":
+            metric = recall
+        else:
+            raise ValueError("The 'metric' parameter should be equal either to 'f1-score', 'precision' or 'recall'")
+
+        # Check if fit had been called
+        check_is_fitted(self, ['rules_', 'estimators_', 'estimators_samples_',
+                               'max_samples_'])
+
+        # Input validation
+        X = check_array(X)
+
+        if X.shape[1] != self.n_features_:
+            raise ValueError("X.shape[1] = %d should be equal to %d, "
+                             "the number of features at training time."
+                             " Please reshape your data."
+                             % (X.shape[1], self.n_features_))
+
+        df = pandas.DataFrame(X, columns=self.feature_names_)
+
+        selected_rules = self.rules_without_feature_names_[:n_rules] \
+            if n_rules else self.rules_without_feature_names_
+
+        scores = np.zeros(X.shape[0])
+        for (r, args) in selected_rules:
+            scores[list(df.query(r).index)] += metric(*args)
+
+        return scores 
+
 
     def score_top_rules(self, X):
         """Score representing an ordering between the base classifiers (rules).
