@@ -73,7 +73,7 @@ class RuleModel:
 
             #fit classifier 
             clf = DualSkoper(**clf_args).fit(X_train, y_train)
-            print("fitted!")
+            print("fitted!", flush=True)
 
             #get some performance stats 
             y_pred = clf.predict(X_test)
