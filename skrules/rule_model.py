@@ -2,10 +2,10 @@ from .rule import Rule
 from .dual_skope import DualSkoper
 
 from sklearn.metrics import classification_report, cohen_kappa_score
-from sklearn.model_selection import StratifiedKFold, RepeatedStratifiedKFold
+from sklearn.model_selection import RepeatedStratifiedKFold
 
 from itertools import count as iter_count
-from collections import defaultdict, Counter
+from collections import defaultdict
 import pandas as pd 
 import numpy as np
 
@@ -153,7 +153,7 @@ class RuleModel:
         selected_pos = ruleset_stuff(df, y, pos_ruleset, "pos")
         selected_neg = ruleset_stuff(df, 1 - y, neg_ruleset, "neg")
 
-        print(f"Ending with {len(selected_pos)} positive and {len(selected_neg)} negative rules.")
+        print(f"Finishing with {len(selected_pos)} positive and {len(selected_neg)} negative rules.")
 
 #        print(f"Positive rules kept: {len(selected_pos)} negative rules kept: {}")
         
@@ -192,6 +192,7 @@ class RuleModel:
             f_score = (2 * precision * recall / denom) \
                 if (denom := precision + recall) > 0 else 0  
  
+    #        print(f"Rule: {str(rule)} -- {accuracy} {recall} {precision}")
 
             coveraging[Rule(str(rule), args)] = dict(   
                 tag = tag,
